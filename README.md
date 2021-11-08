@@ -15,3 +15,15 @@ would be considered a session.
 
 ### Assumptions
 1. After 10min of inactivity the user is session is considered ended.
+
+### Things to note
+**The following are bad account_guid and sid values**  
+"00000000-0000-0000-0000-000000000000"  
+"daa_opt_out_sid"  
+"unknown"  
+""  
+"%3cnull%3e"  
+"unknown_sid"  
+"<null>"  
+"Null"  
+
