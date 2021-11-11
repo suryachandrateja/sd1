@@ -27,3 +27,7 @@ would be considered a session.
 "<null>"  
 "Null"  
 
+### Things looking for
+1. Code Review (any bugs or issues with the code)
+2. Write function to support generating user_id (sid if account_guid is null)
+3. Write function to output if session has no perceived duration (only one event)

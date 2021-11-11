@@ -11,13 +11,9 @@ evs = spark.sql("select * from bronze_layer_beacons.flipp_ev").select("t", "flye
 
 dataset = opens.unionByName(evs)
 
-# user id resolve function (pyspark)
-def userId(df):
-  return df.withColumn("user_id", coalesce(col("account_guid"), col("sid")))
-
 # Pandas transformation functions
 def pandasLagTime(df):
-  df['prev_time_iso']=df.sort_values(by=['time_iso8601'], ascending=True).groupby(['user_id'])['time_iso8601'].shift(1)
+  df['prev_time_iso']=df.sort_values(by=['time_iso8601'], ascending=True).groupby(['account_guid'])['time_iso8601'].shift(1)
   return df
 
 
@@ -28,11 +24,11 @@ def pandasCasting(df):
 
 
 def orderingPandasDataFrame(df):
-   return df.sort_values(by=['user_id', 'time_iso8601'])
+   return df.sort_values(by=['account_guid', 'time_iso8601'])
 
 
 def pandasCleanUserId(df):
-  return df[(df['user_id']!='%3Cnull%3E')]
+  return df[(df['account_guid']!='%3Cnull%3E')]
 
 
 def pandasTimeDiff(df):
@@ -50,11 +46,11 @@ def pandasDefineSession(df):
 
 # PySpark transformation functions
 def pySparkLagTime(df):
-  w=Window().partitionBy("user_id").orderBy(col("time_iso8601").asc_nulls_first())
+  w=Window().partitionBy("account_guid").orderBy(col("time_iso8601").asc_nulls_first())
   return df.withColumn("prev_time_iso", lag("time_iso8601").over(w))
 
 def pySparkCleanUserId(df):
-  return df.filter(col("user_id")!="%3Cnull%3E")
+  return df.filter(col("account_guid")!="%3Cnull%3E")
 
 def pySparkTimeDiff(df):
   return df.withColumn("temp_prev_time_iso", coalesce(col("prev_time_iso"), col("time_iso8601"))) \
@@ -63,26 +59,25 @@ def pySparkTimeDiff(df):
     .withColumn("diff", ((col("curr_time_iso8601").cast("long") - col("temp_prev_time_iso").cast("long"))).cast("int"))
 
 def pySparkDefineSession(df):
-  w=Window().partitionBy("user_id").orderBy(col("time_iso8601").asc_nulls_first())
+  w=Window().partitionBy("account_guid").orderBy(col("time_iso8601").asc_nulls_first())
   return df.withColumn("new_session_flag", when((col("prev_time_iso").isNull()) | (col("diff") >= 600), lit(1)).otherwise(lit(0))) \
            .withColumn("session_id", sum("new_session_flag").over(w))
 
 def pySparkStartEndSessionTimes(df):
-  w=Window().partitionBy("user_id", "session_id").orderBy(col("time_iso8601").asc_nulls_first()).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+  w=Window().partitionBy("account_guid", "session_id").orderBy(col("time_iso8601").asc_nulls_first()).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
   return df.withColumn("start_time", first("time_iso8601").over(w)).withColumn("end_time", last("time_iso8601").over(w))
 
 def pySparkSessionDuration(df):
-  w=Window().partitionBy("user_id", "session_id").orderBy(col("time_iso8601").asc_nulls_first()).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+  w=Window().partitionBy("account_guid", "session_id").orderBy(col("time_iso8601").asc_nulls_first()).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
   return df.withColumn("session_duration", sum("diff").over(w))
 
 
 # PySpark Output
 pysparkTransform=dataset \
-    .transform(userId) \
     .transform(pySparkLagTime) \
     .transform(pySparkCleanUserId) \
     .transform(pySparkTimeDiff) \
     .transform(pySparkDefineSession) \
     .transform(pySparkStartEndSessionTimes) \
     .transform(pySparkSessionDuration) \
-    .select("user_id", "start_time", "end_time", "session_duration", "session_id")
+    .select("account_guid", "start_time", "end_time", "session_duration", "session_id")
