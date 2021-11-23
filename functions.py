@@ -12,6 +12,8 @@ evs = spark.sql("select * from bronze_layer_beacons.flipp_ev").select("t", "flye
 dataset = opens.unionByName(evs)
 
 # Pandas transformation functions
+# Please move to PySpark section if not familiar with Pandas.
+# Please only review either the Pandas or PySpark implementation of the code.
 def pandasLagTime(df):
   df['prev_time_iso']=df.sort_values(by=['time_iso8601'], ascending=True).groupby(['account_guid'])['time_iso8601'].shift(1)
   return df
@@ -45,6 +47,8 @@ def pandasDefineSession(df):
 
 
 # PySpark transformation functions
+# Please move to Pandas section if not familiar with PySpark.
+# Please only review either the Pandas or PySpark implementation of the code.
 def pySparkLagTime(df):
   w=Window().partitionBy("account_guid").orderBy(col("time_iso8601").asc_nulls_first())
   return df.withColumn("prev_time_iso", lag("time_iso8601").over(w))
@@ -72,7 +76,7 @@ def pySparkSessionDuration(df):
   return df.withColumn("session_duration", sum("diff").over(w))
 
 
-# PySpark Output
+# Sample PySpark Output (calling above PySpark functions)
 pysparkTransform=dataset \
     .transform(pySparkLagTime) \
     .transform(pySparkCleanUserId) \
