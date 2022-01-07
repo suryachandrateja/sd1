@@ -1,6 +1,6 @@
 import math
 from datetime import datetime
-from pyspark.sql.functions import *
+import pandas
 
 # Initial Dataset (pyspark dataframe)
 opens = spark.sql("select * from bronze_layer_beacons.flipp_open").select("t", "flyer_id", "account_guid", "sid", "date", "time_iso8601")
