@@ -1,6 +1,6 @@
 import math
 from datetime import datetime
-from pyspark.sql.functions import *
+import pandas
 
 # Initial Dataset (pyspark dataframe)
 opens = spark.sql("select * from bronze_layer_beacons.flipp_open").select("t", "flyer_id", "account_guid", "sid", "date", "time_iso8601")
@@ -15,7 +15,6 @@ dataset = opens.unionByName(evs)
 def pandasLagTime(df):
   df['prev_time_iso']=df.sort_values(by=['time_iso8601'], ascending=True).groupby(['account_guid'])['time_iso8601'].shift(1)
   return df
-
 
 def pandasCasting(df):
   df['prev_time_iso']=df["prev_time_iso"].astype('datetime64[s]')
@@ -44,3 +43,6 @@ def pandasDefineSession(df):
   return df
 
 # Sample Pandas Output
+pySparkDefineSession(pandasTimeDiff(pandasCleanUserId(pandasLagTime(
+  dataset.toPandas()
+))))
